@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css" />
+    <title>AQI Виджет</title>
+    
+  </head>
+  <body>
+    <div class="container">
+      <div class="drag-area">
+        <span class="title">AQI Widget</span>
+        <button class="close-button no-drag" id="close-btn">✕</button>
+      </div>
+    
+      <img id="aqi-icon" src="icon-0-50-192.png" alt="AQI Icon" />
+      <h3>Индекс качества воздуха</h3>
+      <p id="aqi-value">Загрузка...</p>
+      <p id="pm10"></p>
+      <p id="pm25"></p>
+      <p id="address"></p>
+    </div>
+    <script src="script.js"></script>
+
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("service-worker.js")
+          .catch(console.error);
+      }
+    </script>
+  </body>
+</html>
+ 
