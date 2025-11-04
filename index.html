@@ -3,34 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="manifest.json" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.waqi.info; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
     <link rel="stylesheet" href="style.css" />
-    <title>AQI Виджет</title>
-    
+    <title>AQI Widget</title>
   </head>
   <body>
     <div class="container">
       <div class="drag-area">
         <span class="title">AQI Widget</span>
-        <button class="close-button no-drag" id="close-btn">✕</button>
+        <button class="close-button no-drag" id="close-btn" aria-label="Закрыть">×</button>
       </div>
-    
+
       <img id="aqi-icon" src="icon-0-50-192.png" alt="AQI Icon" />
-      <h3>Индекс качества воздуха</h3>
-      <p id="aqi-value">Загрузка...</p>
+      <h3>Качество воздуха (AQI)</h3>
+      <button id="refresh-btn" class="refresh-button" aria-label="Обновить данные">Обновить</button>
+      <p id="aqi-value">Загрузка…</p>
       <p id="pm10"></p>
       <p id="pm25"></p>
-      <p id="address"></p>
+      <p id="address">Адрес: …</p>
+      <p id="updated"></p>
     </div>
     <script src="script.js"></script>
-
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("service-worker.js")
-          .catch(console.error);
-      }
-    </script>
   </body>
+  
 </html>
- 

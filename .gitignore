@@ -1,19 +1,21 @@
-# Node.js
+# Dependencies
 node_modules/
 package-lock.json
 
-# Сборка
+# Build artifacts
 dist/
 out/
 
-# Временные файлы и ОС
-.DS_Store
-Thumbs.db
+# Logs
 *.log
 
-# IDE и редакторы
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE settings
 .vscode/
 .idea/
 
-# Кастомная сборка
-aqi-widget-modified/
+# Env
+.env

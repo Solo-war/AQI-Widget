@@ -10,29 +10,30 @@
     "build": "electron-builder"
   },
   "build": {
-  "appId": "com.yourapp.aqi",
-  "win": {
-    "target": "nsis"
-  }
-},
-
-    "extraMetadata": {
-      "main": "main.js"
+    "appId": "com.yourapp.aqi",
+    "asar": true,
+    "files": ["**/*", "!node_modules/.cache", "!dist", "!out"],
+    "win": {
+      "target": "nsis",
+      "icon": "icon-51-100-512.png"
     },
     "nsis": {
       "oneClick": true,
-      "perMachine": true,
+      "perMachine": false,
       "runAfterFinish": true,
       "createDesktopShortcut": false,
       "createStartMenuShortcut": false
+    },
+    "extraMetadata": {
+      "main": "main.js"
     }
-,
+  },
   "devDependencies": {
     "electron": "^29.0.0",
     "electron-builder": "^24.0.0"
   },
   "dependencies": {
-    "auto-launch": "^5.0.6"
+    "dotenv": "^16.0.0"
   }
-
 }
+
