@@ -43,13 +43,19 @@ function fetchWithTimeout(url, { timeout = 8000, ...options } = {}) {
   ]);
 }
 
+let isLoading = false;
+let retryTimer = null;
+let retryDelayMs = 15000; // 15s initial retry
+
 async function loadAQI() {
+  if (isLoading) return;
   const aqiEl = document.getElementById('aqi-value');
   const pm10El = document.getElementById('pm10');
   const pm25El = document.getElementById('pm25');
   const addressEl = document.getElementById('address');
   const iconEl = document.getElementById('aqi-icon');
   const updatedEl = document.getElementById('updated');
+  isLoading = true;
 
   try {
     const token = await getToken();
@@ -111,6 +117,18 @@ async function loadAQI() {
     if (drag) drag.style.backgroundColor = '#ececec';
     if (title) title.style.color = '#000';
     if (closeBtn) closeBtn.style.color = '#000';
+    // Quick auto-retry with backoff
+    if (!retryTimer) {
+      const delay = Math.min(retryDelayMs, 120000); // cap at 2 min
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        retryDelayMs = Math.min(delay * 2, 120000);
+        loadAQI();
+      }, delay);
+    }
+  }
+  finally {
+    isLoading = false;
   }
 }
 
@@ -137,8 +155,17 @@ if (refreshBtn) {
 }
 
 // Start and schedule auto-refresh every 10 minutes
-loadAQI();
-setInterval(loadAQI, 10 * 60 * 1000);
+function startPolling() {
+  loadAQI();
+  setInterval(loadAQI, 10 * 60 * 1000);
+}
+
+if (navigator.onLine) {
+  startPolling();
+} else {
+  // wait for network to come up after boot
+  window.addEventListener('online', startPolling, { once: true });
+}
 
 // Titlebar color sync with AQI value (fallback observer)
 function updateTitlebarFromAQIText() {
@@ -171,4 +198,3 @@ try {
     updateTitlebarFromAQIText();
   }
 } catch {}
-
