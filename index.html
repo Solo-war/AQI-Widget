@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.waqi.info; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.waqi.info; img-src 'self' data:; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'" />
     <link rel="stylesheet" href="style.css" />
     <title>AQI Widget</title>
   </head>
@@ -15,15 +15,15 @@
       </div>
 
       <img id="aqi-icon" src="icon-0-50-192.png" alt="AQI Icon" />
-      <h3>Качество воздуха (AQI)</h3>
-      <button id="refresh-btn" class="refresh-button" aria-label="Обновить данные">Обновить</button>
+      <h3>Индекс качества воздуха (AQI)</h3>
+      <button id="refresh-btn" class="refresh-button" aria-label="Обновить">Обновить</button>
       <p id="aqi-value">Загрузка…</p>
       <p id="pm10"></p>
       <p id="pm25"></p>
-      <p id="address">Адрес: …</p>
-      <p id="updated"></p>
+      <p id="address">Адрес: </p>
+      <p id="updated">Обновлено: </p>
     </div>
     <script src="script.js"></script>
   </body>
-  
+
 </html>

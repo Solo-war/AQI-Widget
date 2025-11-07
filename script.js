@@ -1,4 +1,17 @@
-const STATION = 'A377965';
+let STATION = 'A377965';
+let stationLoaded = false;
+
+async function initStation() {
+  if (stationLoaded) return STATION;
+  try {
+    const s = await (window.electronAPI && window.electronAPI.getEnv ? window.electronAPI.getEnv('WAQI_STATION') : null);
+    if (s && typeof s === 'string' && s.trim()) {
+      STATION = s.trim();
+    }
+  } catch {}
+  stationLoaded = true;
+  return STATION;
+}
 
 function getAQIIcon(aqi) {
   if (aqi <= 50) return 'icon-0-50-192.png';
@@ -16,6 +29,27 @@ function getAQIColor(aqi) {
   if (aqi <= 200) return '#ff0000'; // Unhealthy
   if (aqi <= 300) return '#8f3f97'; // Very Unhealthy
   return '#7e0023'; // Hazardous
+}
+
+function getAQICategory(aqi) {
+  if (aqi <= 50) return 0; // Хорошо
+  if (aqi <= 100) return 1; // Умеренно
+  if (aqi <= 150) return 2; // Вредно для чувствительных групп
+  if (aqi <= 200) return 3; // Вредно
+  if (aqi <= 300) return 4; // Очень вредно
+  return 5; // Опасно
+}
+
+function getAQICategoryNameRu(cat) {
+  switch (cat) {
+    case 0: return 'Хорошо';
+    case 1: return 'Умеренно';
+    case 2: return 'Для чувствительных групп';
+    case 3: return 'Вредно';
+    case 4: return 'Очень вредно';
+    case 5: return 'Опасно';
+    default: return '';
+  }
 }
 
 function getTextColor(bgHex) {
@@ -37,15 +71,23 @@ async function getToken() {
 }
 
 function fetchWithTimeout(url, { timeout = 8000, ...options } = {}) {
-  return Promise.race([
-    fetch(url, options),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout)),
-  ]);
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(id));
 }
 
 let isLoading = false;
 let retryTimer = null;
 let retryDelayMs = 15000; // 15s initial retry
+let notifyHighAQI = true;
+
+async function loadNotifyPref() {
+  try {
+    const v = await (window.electronAPI && window.electronAPI.getPref ? window.electronAPI.getPref('notifyHighAQI') : undefined);
+    if (typeof v === 'boolean') notifyHighAQI = v;
+  } catch {}
+}
 
 async function loadAQI() {
   if (isLoading) return;
@@ -58,6 +100,8 @@ async function loadAQI() {
   isLoading = true;
 
   try {
+    // Ensure station is initialized once
+    if (!stationLoaded) await initStation();
     const token = await getToken();
     if (!token) throw new Error('missing token');
 
@@ -80,6 +124,18 @@ async function loadAQI() {
       if (window.electronAPI && typeof window.electronAPI.setAQIIcon === 'function') {
         window.electronAPI.setAQIIcon(aqiNum);
       }
+      // Уведомления при высоком AQI (категория >= 3)
+      try {
+        const cat = getAQICategory(aqiNum);
+        const prevCat = Number(localStorage.getItem('lastCategory') || '-1');
+        if (notifyHighAQI && cat >= 3 && cat !== prevCat && window.electronAPI && typeof window.electronAPI.notify === 'function') {
+          const catName = getAQICategoryNameRu(cat);
+          const body = `AQI: ${aqiNum} — ${catName}`;
+          window.electronAPI.notify('Высокий уровень загрязнения воздуха', body);
+        }
+        localStorage.setItem('lastCategory', String(cat));
+        localStorage.setItem('lastAQI', String(aqiNum));
+      } catch {}
     } else {
       aqiEl.textContent = 'AQI: —';
       iconEl.src = getAQIIcon(0);
@@ -104,10 +160,10 @@ async function loadAQI() {
     if (title) title.style.color = fg;
     if (closeBtn) closeBtn.style.color = fg;
   } catch (e) {
-    aqiEl.textContent = 'Ошибка подключения';
+    aqiEl.textContent = 'Не удалось получить данные. Проверьте сеть или токен.';
     pm10El.textContent = '';
     pm25El.textContent = '';
-    addressEl.textContent = 'Адрес: …';
+    addressEl.textContent = 'Адрес: —';
     updatedEl.textContent = '';
 
     // Reset title bar color on error
@@ -119,10 +175,11 @@ async function loadAQI() {
     if (closeBtn) closeBtn.style.color = '#000';
     // Quick auto-retry with backoff
     if (!retryTimer) {
-      const delay = Math.min(retryDelayMs, 120000); // cap at 2 min
+      const jitterFactor = 1 + (Math.random() * 0.3 - 0.15); // ±15%
+      const delay = Math.min(Math.max(2000, Math.floor(retryDelayMs * jitterFactor)), 120000); // [2s .. 2min]
       retryTimer = setTimeout(() => {
         retryTimer = null;
-        retryDelayMs = Math.min(delay * 2, 120000);
+        retryDelayMs = Math.min(Math.floor(delay * 2), 120000);
         loadAQI();
       }, delay);
     }
@@ -155,7 +212,9 @@ if (refreshBtn) {
 }
 
 // Start and schedule auto-refresh every 10 minutes
-function startPolling() {
+async function startPolling() {
+  await loadNotifyPref();
+  await initStation();
   loadAQI();
   setInterval(loadAQI, 10 * 60 * 1000);
 }
@@ -196,5 +255,27 @@ try {
     const observer = new MutationObserver(() => updateTitlebarFromAQIText());
     observer.observe(aqiEl, { childList: true, characterData: true, subtree: true });
     updateTitlebarFromAQIText();
+  }
+  if (window.electronAPI && typeof window.electronAPI.onRefresh === 'function') {
+    window.electronAPI.onRefresh(async () => {
+      try {
+        const el = document.getElementById('refresh-btn');
+        if (el) el.disabled = true;
+        document.getElementById('aqi-value').textContent = 'Загрузка…';
+        await loadAQI();
+      } finally {
+        const el = document.getElementById('refresh-btn');
+        if (el) el.disabled = false;
+      }
+    });
+  }
+  if (window.electronAPI && typeof window.electronAPI.onPrefsChanged === 'function') {
+    window.electronAPI.onPrefsChanged((payload) => {
+      try {
+        if (payload && payload.key === 'notifyHighAQI') {
+          notifyHighAQI = !!payload.value;
+        }
+      } catch {}
+    });
   }
 } catch {}
